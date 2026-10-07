@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ardoise à dettes — Gestionnaire de dettes</title>
+<style>
+  :root{
+    --bg:#F8F5F2;
+    --surface:#FFFFFF;
+    --surface-soft:#FBF9FC;
+    --text:#202027;
+    --muted:#85818C;
+    --pink:#F4A7C1;
+    --pink-soft:#FCE7EF;
+    --lavender:#BDB0E8;
+    --lavender-soft:#EEEAF9;
+    --blue:#A9D8EA;
+    --blue-soft:#E7F5FA;
+    --sage:#B8DDBB;
+    --sage-soft:#EAF6EB;
+    --border:#E9E4EA;
+    --shadow:0 8px 28px rgba(61,48,69,.07);
+  }
+
+  *{box-sizing:border-box}
+  html{background:var(--bg)}
+  body{
+    margin:0;
+    min-height:100vh;
+    color:var(--text);
+    font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    background:var(--bg);
+    overflow-x:hidden;
+  }
+
+  .wrap{max-width:980px;margin:auto;padding:42px 24px 70px}
+
+  header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:20px;
+    margin-bottom:28px;
+  }
+
+  .brand{position:relative;overflow:hidden;flex:1;min-height:118px;display:flex;align-items:center;padding:25px 38px;border:1px solid #EEE8F0;border-radius:26px;background:#FFFDFC;box-shadow:0 8px 28px rgba(61,48,69,.06)}
+  .brand::before{content:"";position:absolute;width:330px;height:150px;left:-35px;top:-60px;background:#DCD0FF;border-radius:48% 52% 45% 55%;transform:rotate(-9deg);opacity:.8}
+  .brand::after{content:"";position:absolute;width:300px;height:145px;right:-25px;top:-48px;background:#FFD5E2;border-radius:55% 45% 52% 48%;transform:rotate(-8deg);opacity:.82}
+  .brand-content{position:relative;z-index:2}
+  h1{margin:0;font-size:38px;line-height:1.05;letter-spacing:-1.5px;font-weight:850}
+  .spark{font-size:29px;vertical-align:5px;margin-left:3px}
+  .sub{font-size:11px;color:#5E5966;margin-top:9px;letter-spacing:2.1px;font-weight:700;text-transform:uppercase}
+
+  button{border:0;cursor:pointer;color:inherit;font:inherit}
+
+  .primary{
+    padding:12px 17px;border-radius:13px;font-weight:750;font-size:13px;
+    background:var(--text);color:#fff;box-shadow:0 5px 16px rgba(32,32,39,.12);
+    transition:.2s ease;
+  }
+  .primary:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(32,32,39,.16)}
+
+  .summary{
+    padding:25px 27px;border:1px solid var(--border);border-radius:22px;
+    background:var(--surface);margin-bottom:24px;box-shadow:var(--shadow);
+  }
+  .summary .eyebrow{color:#8D8793;font-size:10px;font-weight:750;letter-spacing:1.6px;text-transform:uppercase}
+  .total{font-size:clamp(42px,7vw,64px);line-height:1;font-weight:850;letter-spacing:-2.5px;margin:9px 0 14px}
+  .summary-stats{display:flex;gap:22px;flex-wrap:wrap;color:var(--muted);font-size:11px}
+  .summary-stats strong{color:var(--text);font-size:13px}
+
+  .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+
+  .card{
+    position:relative;overflow:hidden;border:1px solid var(--border);border-radius:20px;
+    padding:20px;background:var(--surface);box-shadow:var(--shadow);
+    transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease,opacity .22s ease;
+  }
+  .card:hover:not(.dragging){transform:translateY(-2px);box-shadow:0 12px 32px rgba(61,48,69,.10)}
+  .card.done{border-color:#CDE7D0;background:#FCFFFC}
+
+  .card-head{position:relative;z-index:2;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+  .name{font-size:18px;font-weight:800;letter-spacing:-.2px}
+  .menu{background:transparent;color:#AAA4AF;font-size:22px;line-height:1;padding:1px 5px;transition:.18s}
+  .menu:hover{color:#6D6675}
+
+  .remaining-label{color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:1.4px;margin-top:20px}
+  .remaining{font-size:34px;line-height:1;font-weight:850;letter-spacing:-1.3px;margin:7px 0 14px}
+  .done .remaining{color:#628A67}
+
+  .bar{height:7px;border-radius:999px;background:#F0EDF1;overflow:hidden}
+  .fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--pink),var(--lavender));transition:width .35s ease}
+  .done .fill{background:var(--sage)}
+
+  .details{display:flex;justify-content:space-between;margin-top:9px;color:var(--muted);font-size:10px}
+  .details strong{color:#615C66}
+
+  .actions{display:flex;gap:9px;margin-top:17px}
+  .pay,.history{padding:10px 12px;border-radius:11px;font-weight:700;font-size:12px;transition:.2s ease}
+  .pay{flex:1;background:var(--pink-soft);border:1px solid #F4D1DE;color:#9D5B74}
+  .pay:hover{background:#F9DDE8}
+  .history{background:var(--lavender-soft);border:1px solid #DED7F0;color:#665B8B}
+  .history:hover{background:#E7E1F5}
+
+  .empty{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--muted);border:1px dashed #DDD7E0;border-radius:20px;background:var(--surface)}
+  .empty .big{font-size:38px;margin-bottom:10px;color:#A898C9}
+
+  .card.drag-ready{cursor:grab;touch-action:none}
+  .card.dragging{opacity:.98;transform:scale(1.025) rotate(.4deg);border-color:#C8BDE9;box-shadow:0 22px 55px rgba(61,48,69,.18);cursor:grabbing;z-index:20;transition:none}
+  .card.drag-placeholder{opacity:0;pointer-events:none;border:1px dashed #D7D0E5;background:transparent;transition:height .22s ease,margin .22s ease}
+  .drag-hint{display:none;color:#9185B5;font-size:9px;font-weight:750;letter-spacing:1px;text-transform:uppercase;margin-top:5px}
+  .card.drag-mode .drag-hint{display:block}
+
+  .modal-backdrop{position:fixed;inset:0;background:rgba(44,38,48,.28);backdrop-filter:blur(7px);display:none;align-items:center;justify-content:center;padding:18px;z-index:10}
+  .modal-backdrop.open{display:flex}
+  .modal{width:min(460px,100%);border:1px solid var(--border);border-radius:22px;padding:25px;background:#fff;box-shadow:0 25px 70px rgba(42,34,47,.18)}
+  .modal h2{margin:0 0 6px;font-size:21px;letter-spacing:-.3px}
+  .modal p{margin:0 0 20px;color:var(--muted);font-size:13px}
+  label{display:block;color:#716B76;font-size:10px;font-weight:750;letter-spacing:1px;text-transform:uppercase;margin:14px 0 7px}
+  input{width:100%;padding:12px 13px;border-radius:11px;border:1px solid #DDD8E0;outline:none;background:#FBFAFC;color:var(--text);font-size:16px}
+  input:focus{border-color:#BEB2E5;box-shadow:0 0 0 3px rgba(189,176,232,.18)}
+  .modal-actions{display:flex;gap:9px;margin-top:20px}
+  .cancel,.save{flex:1;padding:12px;border-radius:11px;font-weight:700}
+  .cancel{background:#F6F3F7;border:1px solid #E8E3EA;color:#6D6672}
+  .cancel:hover{background:#F0ECF2}
+  .save{background:var(--text);color:#fff}
+  .save:hover{background:#34323A}
+
+  .history-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+  .history-modal-head h2{margin:0 0 5px}
+  .edit-history-btn{flex:0 0 auto;width:40px;height:40px;border-radius:11px;background:var(--lavender-soft);border:1px solid #DED7F0;color:#665B8B;font-size:19px;display:grid;place-items:center}
+  .edit-history-btn:hover,.edit-history-btn.active{background:#E4DDF4}
+  .history-list{max-height:260px;overflow:auto;margin-top:12px}
+  .entry{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid #EEEAF0;font-size:13px}
+  .entry:last-child{border-bottom:0}
+  .entry span{color:#77717D}
+  .history-date{width:auto;min-width:145px;padding:7px 9px;border-radius:9px;border:1px solid #DDD8E0;background:#FBFAFC;color:#625D67;font:inherit;font-size:12px;outline:none;color-scheme:light}
+  .history-date:focus{border-color:#BEB2E5;box-shadow:0 0 0 3px rgba(189,176,232,.15)}
+
+  .context-menu{position:fixed;display:none;z-index:30;min-width:210px;padding:6px;border:1px solid #E7D8DF;border-radius:13px;background:#fff;box-shadow:0 15px 40px rgba(42,34,47,.16)}
+  .context-menu.open{display:block}
+  .context-menu button{width:100%;text-align:left;padding:11px 12px;border-radius:9px;background:transparent;color:#B05B77;font-size:12px;font-weight:750}
+  .context-menu button:hover{background:#FCECF2}
+
+  .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);opacity:0;padding:11px 16px;border-radius:12px;background:#fff;border:1px solid #DDD8E0;color:#514B57;box-shadow:0 12px 35px rgba(42,34,47,.16);font-size:12px;transition:.25s;z-index:20}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+
+  @media(max-width:700px){
+    .wrap{padding:24px 14px 48px}
+    header{align-items:flex-start}
+    h1{font-size:25px}
+    .sub{font-size:8px;letter-spacing:1.25px}
+    .primary{padding:10px 12px;font-size:11px}
+    .summary{padding:22px 20px}
+    .total{font-size:48px}
+    .grid{grid-template-columns:1fr;gap:14px}
+    .card{padding:19px}
+    .actions{flex-direction:row}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="brand-content"><h1>Ardoise à dettes <span class="spark">✦</span></h1><div class="sub">Moins de dettes, plus de liberté ♥</div></div>
+    </div>
+    <button type="button" class="primary" id="newDebtBtn">＋ Nouvelle dette</button>
+  </header>
+
+  <section class="summary">
+    <div class="eyebrow">Total restant à rembourser</div>
+    <div class="total" id="totalRemaining">0,00 €</div>
+    <div class="summary-stats">
+      <div><strong id="activeCount">0</strong> dette(s) active(s)</div>
+      <div><strong id="totalPaid">0,00 €</strong> remboursés</div>
+      <div><strong id="totalInitial">0,00 €</strong> au total</div>
+    </div>
+  </section>
+
+  <main class="grid" id="debtGrid"></main>
+</div>
+
+<div class="modal-backdrop" id="debtModal">
+  <div class="modal">
+    <h2>Nouvelle dette</h2>
+    <p>Ajoute une personne ou un objectif à rembourser.</p>
+    <label for="debtName">Nom</label>
+    <input id="debtName" placeholder="Ex. Ivan, Maman, Paul..." maxlength="60">
+    <label for="debtAmount">Montant initial (€)</label>
+    <input id="debtAmount" type="number" min="0.01" step="0.01" placeholder="500">
+    <div class="modal-actions">
+      <button type="button" class="cancel" id="cancelDebtBtn">Annuler</button>
+      <button type="button" class="save" id="createDebtBtn">Créer la dette</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="payModal">
+  <div class="modal">
+    <h2 id="payTitle">Ajouter un remboursement</h2>
+    <p>Le montant restant sera recalculé immédiatement.</p>
+    <label for="payAmount">Montant remboursé (€)</label>
+    <input id="payAmount" type="number" min="0.01" step="0.01" placeholder="50">
+    <div class="modal-actions">
+      <button type="button" class="cancel" id="cancelPayBtn">Annuler</button>
+      <button type="button" class="save" id="addPaymentBtn">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="historyModal">
+  <div class="modal">
+    <div class="history-modal-head">
+      <div>
+        <h2 id="historyTitle">Historique</h2>
+        <p>Les remboursements enregistrés pour cette dette.</p>
+      </div>
+      <button type="button" class="edit-history-btn" id="editHistoryBtn" title="Modifier les dates" aria-label="Modifier les dates">✎</button>
+    </div>
+    <div class="history-list" id="historyList"></div>
+    <div class="modal-actions">
+      <button type="button" class="cancel" id="closeHistoryBtn">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="context-menu" id="contextMenu">
+  <button type="button" id="contextDeleteBtn">🗑️ Supprimer la dette</button>
+</div>
+
+<div class="modal-backdrop" id="confirmModal">
+  <div class="modal">
+    <h2>Supprimer cette dette ?</h2>
+    <p id="confirmText">Cette action supprimera également tout l’historique des remboursements.</p>
+    <div class="modal-actions">
+      <button type="button" class="cancel" id="confirmCancelBtn">Annuler</button>
+      <button type="button" class="save" id="confirmDeleteBtn">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://doixcvvvvvddkomvlfby.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_MtbDvFrZmxg7eDBPvTdyLg_aHzSSas8";
+const { createClient } = window.supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+let debts = [];
+let selectedId = null;
+let contextDebtId = null;
+let confirmDebtId = null;
+let historyEditMode = false;
+
+// Déplacement manuel des dettes par appui long.
+let dragTimer = null;
+let draggedDebtId = null;
+let draggedCard = null;
+let dragPlaceholder = null;
+let dragPointerId = null;
+let dragStarted = false;
+let dragOffsetX = 0;
+let dragOffsetY = 0;
+
+document.getElementById("newDebtBtn").addEventListener("click", openDebtModal);
+document.getElementById("cancelDebtBtn").addEventListener("click", closeModals);
+document.getElementById("createDebtBtn").addEventListener("click", createDebt);
+document.getElementById("cancelPayBtn").addEventListener("click", closeModals);
+document.getElementById("addPaymentBtn").addEventListener("click", addPayment);
+document.getElementById("closeHistoryBtn").addEventListener("click", () => {
+  historyEditMode=false;
+  updateHistoryEditButton();
+  closeModals();
+});
+
+const euro = n => new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR"}).format(n || 0);
+
+function getDebt(id){ return debts.find(d => d.id === id); }
+
+function isInteractiveTarget(target){
+  return !!target.closest("button, input, a, select, textarea");
+}
+
+function showLoading(){
+  document.getElementById("debtGrid").innerHTML =
+    `<div class="card empty"><div class="big">✦</div><strong>Chargement...</strong><div>Récupération de tes dettes.</div></div>`;
+}
+
+function createDragPlaceholder(card){
+  const placeholder=document.createElement("div");
+  placeholder.className="card drag-placeholder";
+  placeholder.style.height=card.offsetHeight+"px";
+  placeholder.style.borderRadius=getComputedStyle(card).borderRadius;
+  placeholder.style.margin="0";
+  return placeholder;
+}
+
+function startDebtDrag(card, pointerId, clientX, clientY){
+  const id=card.dataset.debtId;
+  if(!id) return;
+
+  draggedDebtId=id;
+  draggedCard=card;
+  dragPointerId=pointerId;
+  dragStarted=true;
+
+  const rect=card.getBoundingClientRect();
+  dragOffsetX=clientX-rect.left;
+  dragOffsetY=clientY-rect.top;
+
+  dragPlaceholder=createDragPlaceholder(card);
+  card.parentNode.insertBefore(dragPlaceholder,card);
+
+  card.style.position="fixed";
+  card.style.left=rect.left+"px";
+  card.style.top=rect.top+"px";
+  card.style.width=rect.width+"px";
+  card.style.height=rect.height+"px";
+  card.style.margin="0";
+  card.style.pointerEvents="none";
+
+  card.classList.add("dragging","drag-mode");
+  document.body.style.userSelect="none";
+
+  try{ card.setPointerCapture(pointerId); }catch(e){}
+}
+
+function moveDraggedCard(clientX,clientY){
+  if(!draggedCard) return;
+
+  draggedCard.style.left=(clientX-dragOffsetX)+"px";
+  draggedCard.style.top=(clientY-dragOffsetY)+"px";
+
+  const cards=[...document.querySelectorAll("#debtGrid .card:not(.dragging)")];
+  let target=null;
+
+  for(const card of cards){
+    const r=card.getBoundingClientRect();
+    const midpoint=r.top+r.height/2;
+    if(clientY < midpoint){
+      target=card;
+      break;
+    }
+  }
+
+  const grid=document.getElementById("debtGrid");
+  if(target){
+    if(dragPlaceholder!==target.previousElementSibling){
+      grid.insertBefore(dragPlaceholder,target);
+    }
+  }else{
+    if(grid.lastElementChild!==dragPlaceholder){
+      grid.appendChild(dragPlaceholder);
+    }
+  }
+}
+
+async function finishDebtDrag(){
+  clearTimeout(dragTimer);
+  dragTimer=null;
+
+  if(!draggedCard || !dragPlaceholder){
+    cancelDebtDrag();
+    return;
+  }
+
+  const grid=document.getElementById("debtGrid");
+  grid.insertBefore(draggedCard,dragPlaceholder);
+  dragPlaceholder.remove();
+
+  const orderedIds=[...grid.querySelectorAll(".card[data-debt-id]")].map(c=>c.dataset.debtId);
+  const byId=new Map(debts.map(d=>[d.id,d]));
+  debts=orderedIds.map(id=>byId.get(id)).filter(Boolean);
+
+  const updates=debts.map((d,index)=>({id:d.id,sort_order:index}));
+  const { error } = await db.from("debts").upsert(updates,{onConflict:"id"});
+  if(error){
+    console.error(error);
+    toast("Ordre non enregistré.");
+  }
+
+  cleanupDrag();
+}
+
+function cleanupDrag(){
+  if(draggedCard){
+    draggedCard.classList.remove("dragging","drag-mode");
+    draggedCard.style.position="";
+    draggedCard.style.left="";
+    draggedCard.style.top="";
+    draggedCard.style.width="";
+    draggedCard.style.height="";
+    draggedCard.style.margin="";
+    draggedCard.style.pointerEvents="";
+  }
+
+  if(dragPlaceholder && dragPlaceholder.parentNode){
+    dragPlaceholder.remove();
+  }
+
+  try{
+    if(draggedCard && dragPointerId!=null) draggedCard.releasePointerCapture(dragPointerId);
+  }catch(e){}
+
+  draggedCard=null;
+  dragPlaceholder=null;
+  draggedDebtId=null;
+  dragPointerId=null;
+  dragStarted=false;
+  dragOffsetX=0;
+  dragOffsetY=0;
+  document.body.style.userSelect="";
+}
+
+function cancelDebtDrag(){
+  clearTimeout(dragTimer);
+  dragTimer=null;
+  cleanupDrag();
+}
+
+function handleDebtPointerDown(e){
+  const card=e.target.closest("#debtGrid .card");
+  if(!card || isInteractiveTarget(e.target)) return;
+
+  clearTimeout(dragTimer);
+
+  dragTimer=setTimeout(()=>{
+    startDebtDrag(card,e.pointerId,e.clientX,e.clientY);
+  },450);
+}
+
+function handleDebtPointerMove(e){
+  if(!draggedCard || e.pointerId!==dragPointerId) return;
+  e.preventDefault();
+  moveDraggedCard(e.clientX,e.clientY);
+}
+
+function handleDebtPointerUp(e){
+  if(draggedCard && e.pointerId===dragPointerId){
+    finishDebtDrag();
+  }else{
+    clearTimeout(dragTimer);
+    dragTimer=null;
+  }
+}
+
+function handleDebtPointerCancel(){
+  cancelDebtDrag();
+}
+
+function render(){
+  const grid=document.getElementById("debtGrid");
+  const totalInitial=debts.reduce((s,d)=>s+d.amount,0);
+  const totalPaid=debts.reduce((s,d)=>s+d.payments.reduce((a,p)=>a+p.amount,0),0);
+  const totalRemaining=debts.reduce((s,d)=>s+Math.max(0,d.amount-d.payments.reduce((a,p)=>a+p.amount,0)),0);
+
+  document.getElementById("totalInitial").textContent=euro(totalInitial);
+  document.getElementById("totalPaid").textContent=euro(totalPaid);
+  document.getElementById("totalRemaining").textContent=euro(totalRemaining);
+  document.getElementById("activeCount").textContent=debts.filter(d=>remaining(d)>0).length;
+
+  if(!debts.length){
+    grid.innerHTML=`<div class="card empty"><div class="big">✦</div><strong>Aucune dette pour le moment</strong><div>Crée ta première dette pour commencer.</div></div>`;
+    return;
+  }
+
+  grid.innerHTML=debts.map(d=>{
+    const rem=remaining(d), paid=d.amount-rem, pct=Math.min(100,(paid/d.amount)*100);
+    return `<article class="card drag-ready ${rem<=0 ? "done":""}" data-debt-id="${d.id}">
+      <div class="card-head">
+        <div><div class="name">${escapeHtml(d.name)}</div><div class="drag-hint">Maintiens pour déplacer</div></div>
+        <button type="button" class="menu" data-action="delete" data-id="${d.id}" title="Supprimer">⋯</button>
+      </div>
+      <div class="remaining-label">${rem<=0 ? "Dette remboursée" : "Reste à rembourser"}</div>
+      <div class="remaining">${euro(rem)}</div>
+      <div class="bar"><div class="fill" style="width:${pct}%"></div></div>
+      <div class="details"><span>Remboursé <strong>${euro(paid)}</strong></span><span>${Math.round(pct)} %</span></div>
+      <div class="actions">
+        <button type="button" class="pay" data-action="pay" data-id="${d.id}" ${rem<=0?"disabled":""}>＋ Rembourser</button>
+        <button type="button" class="history" data-action="history" data-id="${d.id}">Historique</button>
+      </div>
+    </article>`;
+  }).join("");
+}
+
+function remaining(d){
+  return Math.max(0,d.amount-d.payments.reduce((s,p)=>s+p.amount,0));
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+}
+
+function openDebtModal(){
+  document.getElementById("debtName").value="";
+  document.getElementById("debtAmount").value="";
+  document.getElementById("debtModal").classList.add("open");
+  setTimeout(()=>document.getElementById("debtName").focus(),50);
+}
+
+async function createDebt(){
+  const name=document.getElementById("debtName").value.trim();
+  const amount=parseFloat(document.getElementById("debtAmount").value);
+  if(!name || !amount || amount<=0){
+    toast("Indique un nom et un montant valide.");
+    return;
+  }
+
+  const nextOrder=debts.length ? Math.max(...debts.map(d=>Number(d.sort_order ?? 0)))+1 : 0;
+  const { data, error } = await db.from("debts")
+    .insert({name,initial_amount:amount,sort_order:nextOrder})
+    .select()
+    .single();
+
+  if(error){
+    console.error(error);
+    toast("Impossible de créer la dette.");
+    return;
+  }
+
+  debts.push({
+    id:data.id,
+    name:data.name,
+    amount:Number(data.initial_amount),
+    sort_order:data.sort_order,
+    payments:[]
+  });
+
+  debts.sort((a,b)=>Number(a.sort_order)-Number(b.sort_order));
+  render();
+  closeModals();
+  toast("Dette créée ✨");
+}
+
+function openPayModal(id){
+  selectedId=id;
+  const d=getDebt(id);
+  if(!d) return;
+  document.getElementById("payTitle").textContent="Rembourser — "+d.name;
+  document.getElementById("payAmount").value="";
+  document.getElementById("payModal").classList.add("open");
+  setTimeout(()=>document.getElementById("payAmount").focus(),50);
+}
+
+async function addPayment(){
+  const d=getDebt(selectedId);
+  const amount=parseFloat(document.getElementById("payAmount").value);
+
+  if(!d || !amount || amount<=0){
+    toast("Indique un montant valide.");
+    return;
+  }
+
+  const rem=remaining(d);
+  if(amount>rem){
+    toast("Le remboursement ne peut pas dépasser le montant restant.");
+    return;
+  }
+
+  const paymentDate=new Date();
+  const { data, error } = await db.from("payments")
+    .insert({
+      debt_id:d.id,
+      amount,
+      payment_date:paymentDate.toISOString().slice(0,10)
+    })
+    .select()
+    .single();
+
+  if(error){
+    console.error(error);
+    toast("Impossible d'enregistrer le remboursement.");
+    return;
+  }
+
+  d.payments.push({
+    id:data.id,
+    amount:Number(data.amount),
+    date:data.payment_date
+  });
+
+  render();
+  closeModals();
+  toast(amount===rem ? "Dette entièrement remboursée 🎉" : "Remboursement ajouté ✓");
+}
+
+function toDateInputValue(dateValue){
+  const d=new Date(dateValue);
+  if(Number.isNaN(d.getTime())) return "";
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,"0");
+  const day=String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${day}`;
+}
+
+document.getElementById("historyList").addEventListener("change", async (e) => {
+  if(!e.target.classList.contains("history-date")) return;
+  const d=getDebt(selectedId);
+  if(!d) return;
+
+  const payment=d.payments.find(p=>p.id===e.target.dataset.paymentId);
+  if(!payment) return;
+
+  const value=e.target.value;
+  if(!value) return;
+
+  const { error } = await db.from("payments")
+    .update({payment_date:value})
+    .eq("id",payment.id);
+
+  if(error){
+    console.error(error);
+    toast("Date non enregistrée.");
+    return;
+  }
+
+  payment.date=value;
+  renderHistoryList(d);
+  toast("Date modifiée ✓");
+});
+
+function updateHistoryEditButton(){
+  const btn=document.getElementById("editHistoryBtn");
+  if(!btn) return;
+  btn.classList.toggle("active", historyEditMode);
+  btn.textContent=historyEditMode ? "✓" : "✎";
+  btn.title=historyEditMode ? "Terminer les modifications" : "Modifier les dates";
+  btn.setAttribute("aria-label", btn.title);
+}
+
+function renderHistoryList(d){
+  const list=document.getElementById("historyList");
+  if(!d || !d.payments.length){
+    list.innerHTML='<div style="color:var(--muted);font-size:13px;padding:15px 0">Aucun remboursement enregistré.</div>';
+    return;
+  }
+
+  const sortedPayments=[...d.payments].sort((a,b)=>{
+    return new Date(b.date).getTime() - new Date(a.date).getTime();
+  });
+
+  list.innerHTML=sortedPayments.map((p)=>{
+    if(historyEditMode){
+      return `<div class="entry">
+        <input class="history-date" type="date" value="${toDateInputValue(p.date)}" data-payment-id="${p.id}" aria-label="Date du remboursement">
+        <strong>+ ${euro(p.amount)}</strong>
+      </div>`;
+    }
+    return `<div class="entry">
+      <span>${new Date(p.date).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"})}</span>
+      <strong>+ ${euro(p.amount)}</strong>
+    </div>`;
+  }).join("");
+}
+
+document.getElementById("editHistoryBtn").addEventListener("click", () => {
+  const d=getDebt(selectedId);
+  if(!d) return;
+  historyEditMode=!historyEditMode;
+  updateHistoryEditButton();
+  renderHistoryList(d);
+  toast(historyEditMode ? "Mode modification activé ✎" : "Modifications terminées ✓");
+});
+
+function openHistory(id){
+  const d=getDebt(id);
+  if(!d) return;
+  selectedId=id;
+  document.getElementById("historyTitle").textContent="Historique — "+d.name;
+  historyEditMode=false;
+  updateHistoryEditButton();
+  renderHistoryList(d);
+  document.getElementById("historyModal").classList.add("open");
+}
+
+function openContextMenu(id, button){
+  contextDebtId=id;
+  const menu=document.getElementById("contextMenu");
+  const rect=button.getBoundingClientRect();
+  menu.style.left=Math.min(rect.right-190, window.innerWidth-205)+"px";
+  menu.style.top=Math.min(rect.bottom+7, window.innerHeight-65)+"px";
+  menu.classList.add("open");
+}
+
+function closeContextMenu(){
+  document.getElementById("contextMenu").classList.remove("open");
+  contextDebtId=null;
+}
+
+function askDeleteDebt(id){
+  const d=getDebt(id);
+  if(!d) return;
+  confirmDebtId=id;
+  document.getElementById("confirmText").textContent =
+    `Supprimer « ${d.name} » ? Cette action supprimera également tout l’historique des remboursements.`;
+  closeContextMenu();
+  document.getElementById("confirmModal").classList.add("open");
+}
+
+async function deleteDebtConfirmed(){
+  const d=getDebt(confirmDebtId);
+  if(!d) return;
+
+  const { error } = await db.from("debts").delete().eq("id",confirmDebtId);
+
+  if(error){
+    console.error(error);
+    toast("Impossible de supprimer la dette.");
+    return;
+  }
+
+  debts=debts.filter(x=>x.id!==confirmDebtId);
+  render();
+  document.getElementById("confirmModal").classList.remove("open");
+  confirmDebtId=null;
+  toast("Dette supprimée.");
+}
+
+function closeModals(){
+  document.querySelectorAll(".modal-backdrop").forEach(x=>x.classList.remove("open"));
+  historyEditMode=false;
+  updateHistoryEditButton();
+  selectedId=null;
+}
+
+document.querySelectorAll(".modal-backdrop").forEach(m=>m.addEventListener("click",e=>{
+  if(e.target===m)closeModals();
+}));
+
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape")closeModals();
+});
+
+function toast(msg){
+  const t=document.getElementById("toast");
+  t.textContent=msg;
+  t.classList.add("show");
+  clearTimeout(window.toastTimer);
+  window.toastTimer=setTimeout(()=>t.classList.remove("show"),2200);
+}
+
+const debtGrid=document.getElementById("debtGrid");
+debtGrid.addEventListener("pointerdown", handleDebtPointerDown);
+debtGrid.addEventListener("pointermove", handleDebtPointerMove, {passive:false});
+debtGrid.addEventListener("pointerup", handleDebtPointerUp);
+debtGrid.addEventListener("pointercancel", handleDebtPointerCancel);
+
+document.getElementById("debtGrid").addEventListener("click", (e) => {
+  const btn=e.target.closest("[data-action]");
+  if(!btn) return;
+  const id=btn.dataset.id;
+  if(btn.dataset.action==="pay") openPayModal(id);
+  if(btn.dataset.action==="history") openHistory(id);
+  if(btn.dataset.action==="delete") openContextMenu(id, btn);
+});
+
+document.getElementById("contextDeleteBtn").addEventListener("click", () => {
+  if(contextDebtId) askDeleteDebt(contextDebtId);
+});
+
+document.getElementById("confirmCancelBtn").addEventListener("click", () => {
+  confirmDebtId=null;
+  document.getElementById("confirmModal").classList.remove("open");
+});
+
+document.getElementById("confirmDeleteBtn").addEventListener("click", deleteDebtConfirmed);
+
+document.addEventListener("click", (e) => {
+  if(!e.target.closest("#contextMenu") && !e.target.closest("[data-action='delete']")){
+    closeContextMenu();
+  }
+});
+
+window.addEventListener("resize", closeContextMenu);
+
+async function loadDebts(){
+  showLoading();
+
+  const { data: debtRows, error: debtError } = await db
+    .from("debts")
+    .select("id,created_at,name,initial_amount,sort_order")
+    .order("sort_order",{ascending:true})
+    .order("created_at",{ascending:true});
+
+  if(debtError){
+    console.error(debtError);
+    document.getElementById("debtGrid").innerHTML =
+      `<div class="card empty"><div class="big">!</div><strong>Impossible de charger les données</strong><div>Vérifie les politiques RLS de Supabase.</div></div>`;
+    toast("Connexion Supabase impossible.");
+    return;
+  }
+
+  const { data: paymentRows, error: paymentError } = await db
+    .from("payments")
+    .select("id,debt_id,amount,payment_date,created_at")
+    .order("payment_date",{ascending:false});
+
+  if(paymentError){
+    console.error(paymentError);
+    document.getElementById("debtGrid").innerHTML =
+      `<div class="card empty"><div class="big">!</div><strong>Impossible de charger les remboursements</strong><div>Vérifie les politiques RLS de Supabase.</div></div>`;
+    toast("Connexion Supabase impossible.");
+    return;
+  }
+
+  const paymentsByDebt=new Map();
+  for(const p of (paymentRows || [])){
+    if(!paymentsByDebt.has(p.debt_id)) paymentsByDebt.set(p.debt_id,[]);
+    paymentsByDebt.get(p.debt_id).push({
+      id:p.id,
+      amount:Number(p.amount),
+      date:p.payment_date
+    });
+  }
+
+  debts=(debtRows || []).map(d=>({
+    id:d.id,
+    name:d.name,
+    amount:Number(d.initial_amount),
+    sort_order:Number(d.sort_order ?? 0),
+    payments:paymentsByDebt.get(d.id) || []
+  }));
+
+  render();
+}
+
+loadDebts();
+</script>
+</body>
+</html>
